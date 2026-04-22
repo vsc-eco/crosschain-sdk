@@ -35,7 +35,7 @@
     "@aioha/aioha": { "optional": true }
   },
   "dependencies": {
-    "@vsc.eco/crosschain-core": "workspace:*"
+    "@vsc.eco/crosschain-core": "0.0.1"
   },
   "devDependencies": {
     "@aioha/aioha": "^1.8.2",

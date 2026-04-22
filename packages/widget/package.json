@@ -42,8 +42,8 @@
     "@aioha/aioha": { "optional": true }
   },
   "dependencies": {
-    "@vsc.eco/crosschain-core": "workspace:*",
-    "@vsc.eco/crosschain-sdk": "workspace:*",
+    "@vsc.eco/crosschain-core": "0.0.1",
+    "@vsc.eco/crosschain-sdk": "0.0.1",
     "bitcoin-address-validation": "^2.2.3",
     "@r2wc/react-to-web-component": "^2.0.3"
   },
