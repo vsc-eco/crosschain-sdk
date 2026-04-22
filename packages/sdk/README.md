@@ -1,13 +1,13 @@
-# @vsc.eco/sdk
+# @vsc.eco/crosschain-sdk
 
-High-level client for the Magi (VSC) cross-chain DEX. Wraps [`@vsc.eco/core`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/core) with pool, price, and balance providers plus a `quickSwap()` orchestrator that composes the 1- or 2-hop swap, signs via [Aioha](https://github.com/aioha-hive/aioha), and broadcasts.
+High-level client for the Magi (VSC) cross-chain DEX. Wraps [`@vsc.eco/crosschain-core`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/core) with pool, price, and balance providers plus a `quickSwap()` orchestrator that composes the 1- or 2-hop swap, signs via [Aioha](https://github.com/aioha-hive/aioha), and broadcasts.
 
 Supports HIVE ↔ HBD ↔ BTC — all swaps are mainnet-to-mainnet; the VSC L2 is used internally for routing.
 
 ## Install
 
 ```sh
-pnpm add @vsc.eco/sdk
+pnpm add @vsc.eco/crosschain-sdk
 # optional, for signing HIVE/HBD input:
 pnpm add @aioha/aioha
 ```
@@ -15,7 +15,7 @@ pnpm add @aioha/aioha
 ## Signed swap (HIVE/HBD input)
 
 ```ts
-import { createMagi, CoinAmount } from '@vsc.eco/sdk';
+import { createMagi, CoinAmount } from '@vsc.eco/crosschain-sdk';
 import { KeyTypes } from '@aioha/aioha';
 
 const magi = createMagi({ aioha });
@@ -52,6 +52,6 @@ const { address } = await magi.getBtcDepositAddress({
 
 ## See also
 
-- [`@vsc.eco/core`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/core) — the math + op layer used by this client.
-- [`@vsc.eco/widget`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/widget) — drop-in UI built on this SDK.
+- [`@vsc.eco/crosschain-core`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/core) — the math + op layer used by this client.
+- [`@vsc.eco/crosschain-widget`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/widget) — drop-in UI built on this SDK.
 - [Repository README](https://github.com/vsc-eco/crosschain-sdk#readme) — integration paths, referral-fee model, full API surface.

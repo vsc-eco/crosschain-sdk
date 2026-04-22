@@ -7,14 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm workspace (pnpm 10.33). Three published packages in `packages/*` plus a demo app in `examples/demo`.
 
 ```
-@vsc.eco/core     pure math + op builders, no network, no framework
+@vsc.eco/crosschain-core     pure math + op builders, no network, no framework
    ↑
-@vsc.eco/sdk      pool/price/balance providers + quickSwap orchestrator
+@vsc.eco/crosschain-sdk      pool/price/balance providers + quickSwap orchestrator
    ↑
-@vsc.eco/widget   React <MagiQuickSwap/> and <magi-quickswap> web component
+@vsc.eco/crosschain-widget   React <MagiQuickSwap/> and <magi-quickswap> web component
 ```
 
-The dependency direction is one-way: `core` imports nothing from `sdk`/`widget`; `sdk` imports only `core`; `widget` imports both. Preserve this — putting network calls or framework code into `@vsc.eco/core` breaks its "zero deps, pure functions" contract.
+The dependency direction is one-way: `core` imports nothing from `sdk`/`widget`; `sdk` imports only `core`; `widget` imports both. Preserve this — putting network calls or framework code into `@vsc.eco/crosschain-core` breaks its "zero deps, pure functions" contract.
 
 ## Commands
 
@@ -26,12 +26,12 @@ pnpm typecheck       # tsc --noEmit per package
 pnpm demo            # vite dev server for examples/demo at :5173
 ```
 
-Per-package (run inside a package dir, or `pnpm --filter @vsc.eco/core test`):
+Per-package (run inside a package dir, or `pnpm --filter @vsc.eco/crosschain-core test`):
 
 ```bash
-pnpm --filter @vsc.eco/core test
-pnpm --filter @vsc.eco/sdk test -- tests/quickSwap.test.ts          # single file
-pnpm --filter @vsc.eco/sdk test -- -t "referral"                    # by test name
+pnpm --filter @vsc.eco/crosschain-core test
+pnpm --filter @vsc.eco/crosschain-sdk test -- tests/quickSwap.test.ts          # single file
+pnpm --filter @vsc.eco/crosschain-sdk test -- -t "referral"                    # by test name
 ```
 
 `pnpm test` hits real endpoints (`indexer.magi.milohpr.com`, `api.hive.blog`, `btc.magi.milohpr.com`) — some tests will fail offline. That is intentional; see `packages/core/tests/live-snapshot.test.ts` for the byte-for-byte fixture tests against real on-chain txs.
@@ -69,7 +69,7 @@ Defined once in `ASSET_DECIMALS` (`packages/core/src/types/index.ts`): HIVE=3, H
 
 `createMagi()` is called twice in `QuickSwap.tsx` to wire the default `PoolPriceProvider` using the client's own pool provider. That double-call is intentional — it lets `prices` default to a provider built from the same pool cache the client uses. Don't "simplify" it without understanding the dependency.
 
-Theming is pure CSS custom properties (`--magi-*`) scoped to `.magi-quickswap`. The dark theme lives at `@vsc.eco/widget/themes/altera-dark.css`.
+Theming is pure CSS custom properties (`--magi-*`) scoped to `.magi-quickswap`. The dark theme lives at `@vsc.eco/crosschain-widget/themes/altera-dark.css`.
 
 ## Testing notes
 
@@ -81,4 +81,4 @@ Theming is pure CSS custom properties (`--magi-*`) scoped to `.magi-quickswap`. 
 
 Strict mode, `moduleResolution: "Bundler"`, ESM-only (`"type": "module"`), target ES2022. Relative imports use `.js` extensions (TS bundler resolution expects the emitted path) — preserve this when adding files. Each package has its own `tsconfig.json` extending `tsconfig.base.json`.
 
-Build is `tsup` emitting ESM + `.d.ts` only. `@vsc.eco/widget` copies CSS verbatim and inlines SVGs as data URLs via tsup loaders.
+Build is `tsup` emitting ESM + `.d.ts` only. `@vsc.eco/crosschain-widget` copies CSS verbatim and inlines SVGs as data URLs via tsup loaders.

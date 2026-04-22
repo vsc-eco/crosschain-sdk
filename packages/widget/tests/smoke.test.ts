@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
  * tests would need jsdom + @testing-library/react; we lean on the core +
  * sdk tests for business logic coverage and keep this pkg UI-only.
  */
-describe('@vsc.eco/widget entry', () => {
+describe('@vsc.eco/crosschain-widget entry', () => {
 	it('exposes MagiQuickSwap from the main entry', async () => {
 		const mod = await import('../src/index.tsx');
 		expect(typeof mod.MagiQuickSwap).toBe('function');

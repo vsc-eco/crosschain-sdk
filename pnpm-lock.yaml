@@ -23,7 +23,7 @@ importers:
       '@aioha/aioha':
         specifier: ^1.8.2
         version: 1.8.2(webextension-polyfill@0.12.0)
-      '@vsc.eco/widget':
+      '@vsc.eco/crosschain-widget':
         specifier: workspace:*
         version: link:../../packages/widget
       react:
@@ -66,7 +66,7 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@vsc.eco/core':
+      '@vsc.eco/crosschain-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -91,10 +91,10 @@ importers:
       '@r2wc/react-to-web-component':
         specifier: ^2.0.3
         version: 2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@vsc.eco/core':
+      '@vsc.eco/crosschain-core':
         specifier: workspace:*
         version: link:../core
-      '@vsc.eco/sdk':
+      '@vsc.eco/crosschain-sdk':
         specifier: workspace:*
         version: link:../sdk
       bitcoin-address-validation:

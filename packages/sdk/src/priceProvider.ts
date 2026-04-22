@@ -1,4 +1,4 @@
-import type { SwapAsset } from '@vsc.eco/core';
+import type { SwapAsset } from '@vsc.eco/crosschain-core';
 import type { PoolProvider } from './poolProvider.js';
 
 export interface PriceProvider {

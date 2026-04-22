@@ -1,4 +1,4 @@
-# @vsc.eco/core
+# @vsc.eco/crosschain-core
 
 Pure swap math and operation builders for the Magi (VSC) L2 DEX. Zero runtime dependencies, no network calls.
 
@@ -7,7 +7,7 @@ Ports the CLP swap formula from the Altera app and emits the exact L1 ops (`tran
 ## Install
 
 ```sh
-pnpm add @vsc.eco/core
+pnpm add @vsc.eco/crosschain-core
 ```
 
 ## Usage
@@ -19,7 +19,7 @@ import {
   getHiveSwapOp,
   CoinAmount,
   MAINNET_CONFIG
-} from '@vsc.eco/core';
+} from '@vsc.eco/crosschain-core';
 
 const amount = CoinAmount.fromDecimal('10', 'HBD');
 
@@ -40,6 +40,6 @@ const depositOp = getHiveDepositOp({
 
 ## See also
 
-- [`@vsc.eco/sdk`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/sdk) — higher-level client with pool/price/balance providers and `quickSwap()`.
-- [`@vsc.eco/widget`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/widget) — drop-in React + web component UI.
+- [`@vsc.eco/crosschain-sdk`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/sdk) — higher-level client with pool/price/balance providers and `quickSwap()`.
+- [`@vsc.eco/crosschain-widget`](https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/widget) — drop-in React + web component UI.
 - [Repository README](https://github.com/vsc-eco/crosschain-sdk#readme) — full architecture, routing rules, swap paths.

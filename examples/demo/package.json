@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@aioha/aioha": "^1.8.2",
-    "@vsc.eco/widget": "workspace:*",
+    "@vsc.eco/crosschain-widget": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

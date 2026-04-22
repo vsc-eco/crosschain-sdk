@@ -10,7 +10,7 @@ import {
 	type PoolDepths,
 	type SwapAsset,
 	type SwapCalcResult
-} from '@vsc.eco/core';
+} from '@vsc.eco/crosschain-core';
 import type { PoolProvider } from './poolProvider.js';
 import type { PriceProvider } from './priceProvider.js';
 

@@ -1,4 +1,4 @@
-import type { PoolDepths } from '@vsc.eco/core';
+import type { PoolDepths } from '@vsc.eco/crosschain-core';
 
 export interface PoolProvider {
 	getPoolDepths(assetA: string, assetB: string): Promise<PoolDepths | null>;

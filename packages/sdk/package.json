@@ -1,5 +1,5 @@
 {
-  "name": "@vsc.eco/sdk",
+  "name": "@vsc.eco/crosschain-sdk",
   "version": "0.0.1",
   "publishConfig": {
     "access": "public"
@@ -35,7 +35,7 @@
     "@aioha/aioha": { "optional": true }
   },
   "dependencies": {
-    "@vsc.eco/core": "workspace:*"
+    "@vsc.eco/crosschain-core": "workspace:*"
   },
   "devDependencies": {
     "@aioha/aioha": "^1.8.2",

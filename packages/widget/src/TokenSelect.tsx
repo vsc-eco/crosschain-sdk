@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { SwapAsset } from '@vsc.eco/sdk';
+import type { SwapAsset } from '@vsc.eco/crosschain-sdk';
 
 import hiveIcon from './assets/hive.svg';
 import hbdIcon from './assets/hbd.svg';
