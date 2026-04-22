@@ -1,4 +1,4 @@
-import type { PoolDepths } from '@magi/core';
+import type { PoolDepths } from '@vsc.eco/core';
 
 export interface PoolProvider {
 	getPoolDepths(assetA: string, assetB: string): Promise<PoolDepths | null>;

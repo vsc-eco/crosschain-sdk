@@ -8,9 +8,9 @@ Built for **Hive Keychain**, **Peakd**, **Ecency**, and any app that wants to of
 
 | Package | Description |
 |---|---|
-| `@magi/core` | Swap math (CLP curve), operation builders, types. Zero dependencies. |
-| `@magi/sdk` | Pool/price/balance providers, `quickSwap()` orchestrator, mapping bot client. |
-| `@magi/widget` | React component + `<magi-quickswap>` web component. Drop-in swap UI. |
+| `@vsc.eco/core` | Swap math (CLP curve), operation builders, types. Zero dependencies. |
+| `@vsc.eco/sdk` | Pool/price/balance providers, `quickSwap()` orchestrator, mapping bot client. |
+| `@vsc.eco/widget` | React component + `<magi-quickswap>` web component. Drop-in swap UI. |
 
 ## Swap Paths
 
@@ -30,7 +30,7 @@ All swaps are mainnet → mainnet. The Magi L2 is used internally for routing �
 ### 1. React app (Ecency, custom frontends)
 
 ```tsx
-import { MagiQuickSwap } from '@magi/widget';
+import { MagiQuickSwap } from '@vsc.eco/widget';
 
 <MagiQuickSwap
   aioha={aiohaInstance}
@@ -44,7 +44,7 @@ import { MagiQuickSwap } from '@magi/widget';
 
 ```html
 <script type="module">
-  import '@magi/widget/webcomponent';
+  import '@vsc.eco/widget/webcomponent';
 </script>
 
 <magi-quickswap id="swap"></magi-quickswap>
@@ -62,7 +62,7 @@ import { MagiQuickSwap } from '@magi/widget';
 ### 3. SDK only — no UI (Keychain extension swap tab)
 
 ```ts
-import { createMagi, CoinAmount } from '@magi/sdk';
+import { createMagi, CoinAmount } from '@vsc.eco/sdk';
 
 const magi = createMagi();
 
@@ -121,7 +121,7 @@ The widget uses CSS custom properties scoped to `.magi-quickswap`. Override any 
 Default is a neutral light theme. An Altera dark theme is available:
 
 ```ts
-import '@magi/widget/themes/altera-dark.css';
+import '@vsc.eco/widget/themes/altera-dark.css';
 ```
 
 ### Variables
@@ -147,7 +147,7 @@ import '@magi/widget/themes/altera-dark.css';
 Integrators can earn a referral fee on outbound BTC swaps by passing a referral config:
 
 ```ts
-import { MAINNET_CONFIG } from '@magi/sdk';
+import { MAINNET_CONFIG } from '@vsc.eco/sdk';
 
 const config = {
   ...MAINNET_CONFIG,
@@ -177,11 +177,11 @@ pnpm demo         # start the demo at localhost:5173
 ## Architecture
 
 ```
-@magi/core          Pure math + op builders. No network calls.
+@vsc.eco/core          Pure math + op builders. No network calls.
     ↓
-@magi/sdk           Pool, price, balance providers. quickSwap orchestrator.
+@vsc.eco/sdk           Pool, price, balance providers. quickSwap orchestrator.
     ↓
-@magi/widget        React component + web component. UI layer.
+@vsc.eco/widget        React component + web component. UI layer.
 ```
 
 The SDK queries:

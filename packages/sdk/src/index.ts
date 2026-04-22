@@ -1,13 +1,13 @@
-import { MAINNET_CONFIG, TESTNET_CONFIG, type MagiConfig, type SwapAsset } from '@magi/core';
+import { MAINNET_CONFIG, TESTNET_CONFIG, type MagiConfig, type SwapAsset } from '@vsc.eco/core';
 import { buildQuickSwap, type QuickSwapInput, type QuickSwapBuildResult } from './quickSwap.js';
 import { createDefaultPoolProvider, type PoolProvider } from './poolProvider.js';
 import type { PriceProvider } from './priceProvider.js';
 import { requestBtcDepositAddress, type BtcDepositRequest, type BtcDepositResult } from './mappingBot.js';
 import { createHiveBalanceProvider, type BalanceProvider } from './balanceProvider.js';
 
-export { MAINNET_CONFIG, TESTNET_CONFIG } from '@magi/core';
-export type { MagiConfig, SwapAsset, ReferralConfig, SwapCalcResult } from '@magi/core';
-export { CoinAmount } from '@magi/core';
+export { MAINNET_CONFIG, TESTNET_CONFIG } from '@vsc.eco/core';
+export type { MagiConfig, SwapAsset, ReferralConfig, SwapCalcResult } from '@vsc.eco/core';
+export { CoinAmount } from '@vsc.eco/core';
 export { createDefaultPoolProvider } from './poolProvider.js';
 export { createPoolPriceProvider } from './priceProvider.js';
 export { createHiveBalanceProvider } from './balanceProvider.js';

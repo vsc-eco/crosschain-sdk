@@ -10,8 +10,8 @@ import {
 	type PoolProvider,
 	type PriceProvider,
 	type SwapAsset
-} from '@magi/sdk';
-import { calculateSwap, calculateTwoHopSwap } from '@magi/core';
+} from '@vsc.eco/sdk';
+import { calculateSwap, calculateTwoHopSwap } from '@vsc.eco/core';
 import { validate as validateBtcAddr, Network as BtcNetwork } from 'bitcoin-address-validation';
 import magiIcon from './assets/magi.svg';
 import { TokenSelect } from './TokenSelect.js';

@@ -1,7 +1,17 @@
 {
-  "name": "@magi/core",
+  "name": "@vsc.eco/core",
   "version": "0.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Magi (VSC) L2 operation builders + swap math — pure functions, no framework dependencies",
+  "keywords": ["hive", "vsc", "dex", "amm", "clp", "swap", "cross-chain"],
+  "homepage": "https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vsc-eco/crosschain-sdk.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -12,7 +22,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "test": "vitest run",

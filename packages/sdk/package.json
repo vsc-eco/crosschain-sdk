@@ -1,7 +1,17 @@
 {
-  "name": "@magi/sdk",
+  "name": "@vsc.eco/sdk",
   "version": "0.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "High-level Magi (VSC) L2 client — quickSwap, pool queries, signer integration via Aioha",
+  "keywords": ["hive", "hbd", "bitcoin", "vsc", "dex", "swap", "cross-chain", "aioha"],
+  "homepage": "https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vsc-eco/crosschain-sdk.git",
+    "directory": "packages/sdk"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -25,7 +35,7 @@
     "@aioha/aioha": { "optional": true }
   },
   "dependencies": {
-    "@magi/core": "workspace:*"
+    "@vsc.eco/core": "workspace:*"
   },
   "devDependencies": {
     "@aioha/aioha": "^1.8.2",

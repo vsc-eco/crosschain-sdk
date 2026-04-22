@@ -1,7 +1,17 @@
 {
-  "name": "@magi/widget",
+  "name": "@vsc.eco/widget",
   "version": "0.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Embeddable Magi QuickSwap widget — React component + web component",
+  "keywords": ["hive", "hbd", "bitcoin", "vsc", "swap", "widget", "react", "web-component", "cross-chain"],
+  "homepage": "https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/widget#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vsc-eco/crosschain-sdk.git",
+    "directory": "packages/widget"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -32,8 +42,8 @@
     "@aioha/aioha": { "optional": true }
   },
   "dependencies": {
-    "@magi/core": "workspace:*",
-    "@magi/sdk": "workspace:*",
+    "@vsc.eco/core": "workspace:*",
+    "@vsc.eco/sdk": "workspace:*",
     "bitcoin-address-validation": "^2.2.3",
     "@r2wc/react-to-web-component": "^2.0.3"
   },

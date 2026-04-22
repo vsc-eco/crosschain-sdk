@@ -23,7 +23,7 @@ importers:
       '@aioha/aioha':
         specifier: ^1.8.2
         version: 1.8.2(webextension-polyfill@0.12.0)
-      '@magi/widget':
+      '@vsc.eco/widget':
         specifier: workspace:*
         version: link:../../packages/widget
       react:
@@ -66,7 +66,7 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@magi/core':
+      '@vsc.eco/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -88,15 +88,15 @@ importers:
 
   packages/widget:
     dependencies:
-      '@magi/core':
-        specifier: workspace:*
-        version: link:../core
-      '@magi/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       '@r2wc/react-to-web-component':
         specifier: ^2.0.3
         version: 2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@vsc.eco/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vsc.eco/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       bitcoin-address-validation:
         specifier: ^2.2.3
         version: 2.2.3

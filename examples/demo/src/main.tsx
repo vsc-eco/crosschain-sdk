@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Aioha, KeyTypes } from '@aioha/aioha';
-import { MagiQuickSwap } from '@magi/widget';
+import { MagiQuickSwap } from '@vsc.eco/widget';
 
 function DemoApp() {
 	const [aioha, setAioha] = useState<Aioha | null>(null);

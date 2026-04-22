@@ -1,4 +1,4 @@
-import type { MagiConfig, SwapAsset } from '@magi/core';
+import type { MagiConfig, SwapAsset } from '@vsc.eco/core';
 
 export interface BtcDepositRequest {
 	recipient: string;

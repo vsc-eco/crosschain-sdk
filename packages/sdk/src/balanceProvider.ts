@@ -1,4 +1,4 @@
-import type { SwapAsset } from '@magi/core';
+import type { SwapAsset } from '@vsc.eco/core';
 
 export interface BalanceProvider {
 	getBalance(username: string, asset: SwapAsset): Promise<bigint | null>;

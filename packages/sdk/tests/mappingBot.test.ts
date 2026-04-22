@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { requestBtcDepositAddress } from '../src/mappingBot.js';
-import { MAINNET_CONFIG } from '@magi/core';
+import { MAINNET_CONFIG } from '@vsc.eco/core';
 
 describe('requestBtcDepositAddress (live)', () => {
 	it('returns a BTC address for a HIVE swap instruction', async () => {

@@ -1,8 +1,8 @@
-/* Altera dark theme — import alongside @magi/widget to get the
+/* Altera dark theme — import alongside @vsc.eco/widget to get the
    glassmorphism dark look from altera-app. Usage:
-     import '@magi/widget/themes/altera-dark.css';
+     import '@vsc.eco/widget/themes/altera-dark.css';
    or in HTML:
-     <link rel="stylesheet" href=".../@magi/widget/themes/altera-dark.css">
+     <link rel="stylesheet" href=".../@vsc.eco/widget/themes/altera-dark.css">
 */
 
 .magi-quickswap {
