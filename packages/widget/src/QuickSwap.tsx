@@ -251,9 +251,24 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 		return `1 ${assetIn} ≈ ${rate.toFixed(assetOut === 'BTC' ? 8 : 6)} ${assetOut}`;
 	}, [preview, inputAmount, assetIn, assetOut]);
 
+	// Referral skim (denominated in assetOut), merged into the displayed Fee
+	// so users see the full cost. Mirrors referralQualifies() gates:
+	// referral must be configured, this must be the hive-signed path (not a
+	// BTC deposit), assetOut must not be HIVE/HBD, and input must clear the
+	// usdThreshold (defaults to 0). Ref skim = expectedOutput * bps / 10000.
+	const referralFeeRaw = useMemo(() => {
+		if (!config.referral || isBtcInput) return 0n;
+		if (assetOut === 'HIVE' || assetOut === 'HBD') return 0n;
+		if (!preview || preview.expectedOutput === 0n) return 0n;
+		const threshold = config.referral.usdThreshold ?? 0;
+		if (inputUsd == null || !Number.isFinite(inputUsd) || inputUsd < threshold) return 0n;
+		return (preview.expectedOutput * BigInt(config.referral.bps)) / 10000n;
+	}, [config.referral, isBtcInput, assetOut, preview, inputUsd]);
+
 	const feeLabel = useMemo(() => {
 		if (!preview) return '0.08% + CLP';
-		const hop2Amt = new CoinAmount(preview.totalFee, assetOut);
+		const hop2TotalRaw = preview.totalFee + referralFeeRaw;
+		const hop2Amt = new CoinAmount(hop2TotalRaw, assetOut);
 		const main = `${hop2Amt.toDecimalString()} ${assetOut}`;
 		const hop2Usd = usdOut != null ? Number(hop2Amt.toDecimalString()) * usdOut : null;
 		if (!preview.hop1Fee) {
@@ -271,7 +286,15 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			return `${combined} ${formatUsd(hop2Usd + hop1UsdVal)}`;
 		}
 		return combined;
-	}, [preview, assetOut, usdOut, usdHop1]);
+	}, [preview, assetOut, usdOut, usdHop1, referralFeeRaw]);
+
+	const minReceivedLabel = useMemo(() => {
+		if (!preview || preview.minAmountOut === 0n) return '—';
+		const amt = new CoinAmount(preview.minAmountOut, assetOut);
+		const main = `${amt.toDecimalString()} ${assetOut}`;
+		const usd = usdOut != null ? Number(amt.toDecimalString()) * usdOut : null;
+		return usd != null ? `${main} ${formatUsd(usd)}` : main;
+	}, [preview, assetOut, usdOut]);
 
 	const routeLabel = useMemo(() => {
 		if (assetIn === 'HBD' || assetOut === 'HBD') return `${assetIn} → ${assetOut}`;
@@ -395,6 +418,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			<div className="magi-qs-details">
 				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Rate</span><span className="magi-qs-detail-value">{rateLabel}</span></div>
 				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Fee</span><span className="magi-qs-detail-value">{feeLabel}</span></div>
+				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Min received</span><span className="magi-qs-detail-value">{minReceivedLabel}</span></div>
 				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Route</span><span className="magi-qs-detail-value route">{routeLabel}</span></div>
 			</div>
 
