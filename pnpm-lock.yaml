@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@vsc.eco/crosschain-core': workspace:*
+  '@vsc.eco/crosschain-sdk': workspace:*
+  '@vsc.eco/crosschain-widget': workspace:*
+
 importers:
 
   .:
@@ -67,8 +72,8 @@ importers:
   packages/sdk:
     dependencies:
       '@vsc.eco/crosschain-core':
-        specifier: 0.0.1
-        version: 0.0.1
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@aioha/aioha':
         specifier: ^1.8.2
@@ -92,11 +97,11 @@ importers:
         specifier: ^2.0.3
         version: 2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@vsc.eco/crosschain-core':
-        specifier: 0.0.1
-        version: 0.0.1
+        specifier: workspace:*
+        version: link:../core
       '@vsc.eco/crosschain-sdk':
-        specifier: 0.0.1
-        version: 0.0.1(@aioha/aioha@1.8.2(webextension-polyfill@0.12.0))
+        specifier: workspace:*
+        version: link:../sdk
       bitcoin-address-validation:
         specifier: ^2.2.3
         version: 2.2.3
@@ -861,17 +866,6 @@ packages:
 
   '@vitest/utils@2.1.9':
     resolution: {integrity: sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==}
-
-  '@vsc.eco/crosschain-core@0.0.1':
-    resolution: {integrity: sha512-3d43KLgrk7br2UJaHlpssSnk40cpYY6t66DScxUdLsTySoHPmj4OtnxpACdwK8NLWOgfQ30y1Ru1iK69zXFGVQ==}
-
-  '@vsc.eco/crosschain-sdk@0.0.1':
-    resolution: {integrity: sha512-2wj+gm6dmTSDiv5RbZjytKuV0jiBe0PbCGo7bLE/oCBjsGFOeuXWV+PJ34zmVGBPRmoUu4gH4ipMsisDFwTr2w==}
-    peerDependencies:
-      '@aioha/aioha': ^1.8.0
-    peerDependenciesMeta:
-      '@aioha/aioha':
-        optional: true
 
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
@@ -2356,14 +2350,6 @@ snapshots:
       '@vitest/pretty-format': 2.1.9
       loupe: 3.2.1
       tinyrainbow: 1.2.0
-
-  '@vsc.eco/crosschain-core@0.0.1': {}
-
-  '@vsc.eco/crosschain-sdk@0.0.1(@aioha/aioha@1.8.2(webextension-polyfill@0.12.0))':
-    dependencies:
-      '@vsc.eco/crosschain-core': 0.0.1
-    optionalDependencies:
-      '@aioha/aioha': 1.8.2(webextension-polyfill@0.12.0)
 
   acorn@8.16.0: {}
 
