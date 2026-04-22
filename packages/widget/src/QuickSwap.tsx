@@ -77,6 +77,20 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 	const [btcDepositLoading, setBtcDepositLoading] = useState(false);
 	const [btcDepositError, setBtcDepositError] = useState<string | null>(null);
 
+	const [rcBlock, setRcBlock] = useState<{
+		/** 'insufficient-rc' — sim ran, rc_used > rcAvailable.
+		 *  'sim-failed' — sim itself returned success:false, typically because
+		 *  the user has no HBD on Magi at all. Both cases resolve by
+		 *  depositing HBD into Magi via Altera. */
+		reason: 'insufficient-rc' | 'sim-failed';
+		rcUsed: bigint;
+		rcAvailable: bigint;
+		/** Only set for the insufficient-rc case — for sim-failed we don't
+		 *  know how much RC is needed. */
+		hbdNeeded?: number;
+		errMsg?: string;
+	} | null>(null);
+
 	const [usdIn, setUsdIn] = useState<number | null>(null);
 	const [usdOut, setUsdOut] = useState<number | null>(null);
 	const [usdHop1, setUsdHop1] = useState<{ asset: string; usd: number } | null>(null);
@@ -199,16 +213,43 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 
 	const handleSubmit = useCallback(async () => {
 		if (isBtcInput) { handleBtcDeposit(); return; }
-		if (!canSubmit || !username) return;
-		setError(null); setTxId(null); setSubmitting(true);
+		if (!canSubmit || !username || !aioha) return;
+		setError(null); setTxId(null); setRcBlock(null); setSubmitting(true);
 		try {
-			const res = await magi.quickSwap({ username, assetIn: assetIn as 'HIVE' | 'HBD', amountIn: CoinAmount.fromDecimal(amountInStr, assetIn), assetOut, recipient: recipient.trim(), slippageBps }, keyType);
-			setTxId(res.txId); onSuccess?.(res.txId);
+			const build = await magi.buildQuickSwap({
+				username,
+				assetIn: assetIn as 'HIVE' | 'HBD',
+				amountIn: CoinAmount.fromDecimal(amountInStr, assetIn),
+				assetOut,
+				recipient: recipient.trim(),
+				slippageBps
+			});
+			const rc = await magi.checkSwapRc({ username, build });
+			if (!rc.simOk || !rc.sufficient) {
+				setRcBlock({
+					reason: rc.simOk ? 'insufficient-rc' : 'sim-failed',
+					rcUsed: rc.rcUsed,
+					rcAvailable: rc.rcAvailable,
+					hbdNeeded: rc.simOk ? Number(rc.rcShortfall) / 1000 : undefined,
+					errMsg: rc.simOk ? undefined : (rc.errMsg ?? rc.err ?? undefined)
+				});
+				return;
+			}
+			const signed = await aioha.signAndBroadcastTx(build.ops, keyType);
+			if (!signed.success) {
+				const err = 'error' in signed ? signed.error : 'unknown';
+				throw new Error(`signAndBroadcastTx failed: ${err ?? 'unknown'}`);
+			}
+			if (!('result' in signed) || typeof signed.result !== 'string') {
+				throw new Error('signAndBroadcastTx returned success but no tx id');
+			}
+			setTxId(signed.result);
+			onSuccess?.(signed.result);
 		} catch (err) {
 			const e = err instanceof Error ? err : new Error(String(err));
 			setError(e.message); onError?.(e);
 		} finally { setSubmitting(false); }
-	}, [isBtcInput, handleBtcDeposit, canSubmit, magi, username, assetIn, amountInStr, assetOut, recipient, slippageBps, keyType, onSuccess, onError]);
+	}, [isBtcInput, handleBtcDeposit, canSubmit, aioha, magi, username, assetIn, amountInStr, assetOut, recipient, slippageBps, keyType, onSuccess, onError]);
 
 	const copyToClipboard = useCallback((text: string) => { navigator.clipboard.writeText(text).catch(() => {}); }, []);
 
@@ -427,6 +468,41 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			{previewError && <p className="magi-qs-status error">{previewError}</p>}
 			{error && <p className="magi-qs-status error">{error}</p>}
 			{btcDepositError && <p className="magi-qs-status error">{btcDepositError}</p>}
+
+			{rcBlock && (
+				<div className="magi-qs-rc-modal" role="dialog" aria-modal="true" aria-labelledby="magi-qs-rc-title">
+					<div className="magi-qs-rc-modal-card">
+						<h3 id="magi-qs-rc-title" className="magi-qs-rc-title">Deposit HBD into Magi</h3>
+						{rcBlock.reason === 'insufficient-rc' ? (
+							<p className="magi-qs-rc-body">
+								This swap needs <strong>{(Number(rcBlock.rcUsed) / 1000).toFixed(3)} HBD</strong> of RC in your
+								Magi account. You currently have <strong>{(Number(rcBlock.rcAvailable) / 1000).toFixed(3)} HBD</strong>.
+								Deposit at least <strong>{(rcBlock.hbdNeeded ?? 0).toFixed(3)} HBD</strong> into Magi, then try again.
+							</p>
+						) : (
+							<p className="magi-qs-rc-body">
+								We couldn't simulate the swap — usually this means your Magi account doesn't hold enough HBD
+								to cover it. Deposit HBD into Magi, then try again.
+								{rcBlock.errMsg ? <> <span className="magi-qs-rc-err">({rcBlock.errMsg})</span></> : null}
+							</p>
+						)}
+						<p className="magi-qs-rc-body">
+							The easiest way to move HBD into Magi is through <strong>Altera</strong>.
+						</p>
+						<a
+							className="magi-qs-submit"
+							href="https://altera.magi.eco"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Open Altera
+						</a>
+						<button type="button" className="magi-qs-rc-dismiss" onClick={() => setRcBlock(null)}>
+							Dismiss
+						</button>
+					</div>
+				</div>
+			)}
 
 			{!btcDepositAddress && (
 				<button type="button" className="magi-qs-submit" onClick={handleSubmit} disabled={!canSubmit || btcDepositLoading}>{submitLabel}</button>

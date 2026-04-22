@@ -4,6 +4,16 @@ import { createDefaultPoolProvider, type PoolProvider } from './poolProvider.js'
 import type { PriceProvider } from './priceProvider.js';
 import { requestBtcDepositAddress, type BtcDepositRequest, type BtcDepositResult } from './mappingBot.js';
 import { createHiveBalanceProvider, type BalanceProvider } from './balanceProvider.js';
+import {
+	checkSwapRc,
+	getAccountRc,
+	simCallFromSwapOp,
+	simulateSwapCall,
+	type AccountRc,
+	type RcCheckResult,
+	type SimulateResult,
+	type SwapCallSpec
+} from './rc.js';
 
 export { MAINNET_CONFIG, TESTNET_CONFIG } from '@vsc.eco/crosschain-core';
 export type { MagiConfig, SwapAsset, ReferralConfig, SwapCalcResult } from '@vsc.eco/crosschain-core';
@@ -16,6 +26,13 @@ export type { PriceProvider } from './priceProvider.js';
 export type { BalanceProvider } from './balanceProvider.js';
 export type { QuickSwapInput, QuickSwapBuildResult } from './quickSwap.js';
 export type { BtcDepositRequest, BtcDepositResult } from './mappingBot.js';
+export {
+	checkSwapRc,
+	getAccountRc,
+	simCallFromSwapOp,
+	simulateSwapCall
+} from './rc.js';
+export type { AccountRc, RcCheckResult, SimulateResult, SwapCallSpec } from './rc.js';
 
 export interface AiohaLike {
 	signAndBroadcastTx(
@@ -41,6 +58,9 @@ export interface MagiClient {
 	quickSwap: (input: QuickSwapInput, keyType?: unknown) => Promise<QuickSwapResult>;
 	getBtcDepositAddress: (req: BtcDepositRequest) => Promise<BtcDepositResult>;
 	getBalance: (username: string, asset: SwapAsset) => Promise<bigint | null>;
+	getAccountRc: (account: string) => Promise<AccountRc>;
+	simulateSwap: (params: { username: string; build: QuickSwapBuildResult }) => Promise<SimulateResult>;
+	checkSwapRc: (params: { username: string; build: QuickSwapBuildResult }) => Promise<RcCheckResult>;
 }
 
 export interface QuickSwapResult {
@@ -86,6 +106,17 @@ export function createMagi(opts: CreateMagiOptions = {}): MagiClient {
 		},
 		async getBalance(username, asset) {
 			return balances.getBalance(username, asset);
+		},
+		async getAccountRc(account) {
+			return getAccountRc(config, account);
+		},
+		async simulateSwap({ username, build }) {
+			const call = simCallFromSwapOp(build.ops[build.ops.length - 1]);
+			return simulateSwapCall(config, { username, call });
+		},
+		async checkSwapRc({ username, build }) {
+			const call = simCallFromSwapOp(build.ops[build.ops.length - 1]);
+			return checkSwapRc(config, { username, call });
 		}
 	};
 }

@@ -34,6 +34,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0;
+	position: relative;
 }
 
 .magi-quickswap *,
@@ -316,6 +317,69 @@
 	font-size: 0.7rem;
 	color: var(--magi-text-muted);
 	padding: 0.125rem 0 0;
+}
+
+/* RC-gate popup — modal overlay + card. Fires when simulateContractCalls
+ * either fails (usually "no HBD on Magi") or succeeds but rc_used exceeds
+ * the user's current RC. Resolution for both cases is "deposit HBD into
+ * Magi", pitched via Altera. */
+.magi-qs-rc-modal {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(3px);
+	z-index: 10;
+	border-radius: inherit;
+}
+
+.magi-qs-rc-modal-card {
+	width: 100%;
+	max-width: 320px;
+	background: var(--magi-card-bg);
+	border: 1px solid var(--magi-field-border);
+	border-radius: 1rem;
+	padding: 1.1rem 1.1rem 0.9rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.magi-qs-rc-title {
+	margin: 0;
+	font-weight: 600;
+	font-size: 1.05rem;
+	color: var(--magi-text);
+}
+
+.magi-qs-rc-body {
+	margin: 0;
+	color: var(--magi-text-muted);
+	font-size: 0.95rem;
+	line-height: 1.45;
+}
+
+.magi-qs-rc-err {
+	opacity: 0.8;
+	font-size: 0.85rem;
+}
+
+.magi-qs-rc-dismiss {
+	background: transparent;
+	border: none;
+	color: var(--magi-text-muted);
+	cursor: pointer;
+	font-size: 0.9rem;
+	padding: 0.3rem 0 0;
+	align-self: center;
+}
+
+.magi-qs-rc-dismiss:hover {
+	color: var(--magi-text);
 }
 
 /* Flip button between From and To */

@@ -7,7 +7,12 @@ export interface MagiConfig {
 	dexRouterContractId: string;
 	btcMappingContractId: string;
 	gatewayAccount: string;
+	/** Single GraphQL base URL. Legacy — prefer `gqlUrls` for failover. */
 	gqlUrl?: string;
+	/** Ordered list of GraphQL base URLs. First entry is tried first; on any
+	 *  network/parse/GraphQL error the next entry is tried. The SDK appends
+	 *  `/api/v1/graphql` to each. When set, takes precedence over `gqlUrl`. */
+	gqlUrls?: string[];
 	indexerUrl?: string;
 	hiveAssetName?: string;
 	hbdAssetName?: string;
@@ -33,6 +38,12 @@ export const MAINNET_CONFIG: MagiConfig = {
 	btcMappingContractId: 'vsc1BdrQ6EtbQ64rq2PkPd21x4MaLnVRcJj85d',
 	gatewayAccount: 'vsc.gateway',
 	gqlUrl: 'https://api.vsc.eco',
+	gqlUrls: [
+		'https://api.vsc.eco',
+		'https://vsc.techcoderx.com',
+		'https://api.okinoko.io',
+		'https://magi.milohpr.com'
+	],
 	indexerUrl: 'https://indexer.magi.milohpr.com',
 	hiveAssetName: 'HIVE',
 	hbdAssetName: 'HBD',
