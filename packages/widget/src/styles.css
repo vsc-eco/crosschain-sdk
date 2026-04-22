@@ -318,19 +318,19 @@
 	padding: 0.125rem 0 0;
 }
 
-/* Arrow between From and To */
+/* Flip button between From and To */
 .magi-qs-arrow-wrap {
 	display: flex;
 	justify-content: center;
 	margin: -0.35rem 0;
 	position: relative;
 	z-index: 1;
-	pointer-events: none;
 }
 
-.magi-qs-arrow-icon {
+.magi-qs-flip-btn {
 	width: 26px;
 	height: 26px;
+	padding: 0;
 	border-radius: 50%;
 	background: var(--magi-card-bg);
 	border: 1px solid var(--magi-field-border);
@@ -338,6 +338,24 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	cursor: pointer;
+	transition: color 120ms ease, border-color 120ms ease, transform 200ms ease;
+}
+
+.magi-qs-flip-btn:hover:not(:disabled) {
+	color: var(--magi-text);
+	border-color: var(--magi-text-muted);
+	transform: rotate(180deg);
+}
+
+.magi-qs-flip-btn:focus-visible {
+	outline: 2px solid var(--magi-accent, var(--magi-text));
+	outline-offset: 2px;
+}
+
+.magi-qs-flip-btn:disabled {
+	cursor: not-allowed;
+	opacity: 0.5;
 }
 
 /* Receiver */

@@ -212,6 +212,20 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 
 	const copyToClipboard = useCallback((text: string) => { navigator.clipboard.writeText(text).catch(() => {}); }, []);
 
+	const handleFlip = useCallback(() => {
+		const nextAmountIn = preview && preview.expectedOutput > 0n
+			? new CoinAmount(preview.expectedOutput, assetOut).toDecimalString()
+			: '';
+		const wasBtcOut = assetOut === 'BTC';
+		const willBeBtcOut = assetIn === 'BTC';
+		setAssetIn(assetOut);
+		setAssetOut(assetIn);
+		setAmountInStr(nextAmountIn);
+		setBtcDepositAddress(null);
+		setBtcDepositError(null);
+		if (wasBtcOut !== willBeBtcOut) setRecipient('');
+	}, [assetIn, assetOut, preview]);
+
 	// USD values
 	const inputUsd = useMemo(() => {
 		if (usdIn == null || inputAmount === 0n) return null;
@@ -319,10 +333,10 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 				)}
 			</div>
 
-			<div className="magi-qs-arrow-wrap" aria-hidden="true">
-				<div className="magi-qs-arrow-icon">
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
-				</div>
+			<div className="magi-qs-arrow-wrap">
+				<button type="button" className="magi-qs-flip-btn" onClick={handleFlip} disabled={submitting} aria-label="Flip From and To">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="3" x2="7" y2="21" /><polyline points="3 7 7 3 11 7" /><line x1="17" y1="3" x2="17" y2="21" /><polyline points="21 17 17 21 13 17" /></svg>
+				</button>
 			</div>
 
 			{/* To */}
