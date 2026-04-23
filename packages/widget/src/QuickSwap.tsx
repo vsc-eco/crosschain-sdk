@@ -37,14 +37,26 @@ export interface MagiQuickSwapProps {
 	onSuccess?: (txId: string) => void;
 	onError?: (err: Error) => void;
 	className?: string;
+	/**
+	 * Optional broadcast hook that takes precedence over `aioha`. Lets hosts
+	 * that don't use Aioha (Keychain-only apps, PeakD, custom signers) plug
+	 * their own signing flow in without writing an AiohaLike adapter. When
+	 * set, the widget calls `onBroadcast(ops, keyType)` with the already-
+	 * tightened ops and expects a resolved `txId` string. Rejecting the
+	 * promise (or throwing) surfaces as the widget's error state.
+	 */
+	onBroadcast?: (ops: unknown[], keyType: unknown) => Promise<{ txId: string }>;
 }
 
 export function MagiQuickSwap(props: MagiQuickSwapProps) {
 	const {
 		aioha, username, config = MAINNET_CONFIG, pools, prices,
 		keyType, defaultAssetIn = 'HBD', defaultAssetOut = 'BTC',
-		defaultSlippageBps = 100, availableBalance, onSuccess, onError, className
+		defaultSlippageBps = 100, availableBalance, onSuccess, onError, className,
+		onBroadcast
 	} = props;
+
+	const hasSigner = !!onBroadcast || !!aioha;
 
 	const poolProvider = useMemo(() => pools ?? undefined, [pools]);
 	const magi = useMemo<MagiClient>(() => {
@@ -197,7 +209,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 
 	const canSubmit = isBtcInput
 		? hasAmount && !sameAsset && recipientValid && !!preview && preview.expectedOutput > 0n && !submitting
-		: !!aioha && !!username && hasAmount && !sameAsset && recipientValid && !exceedsBalance && !!preview && preview.expectedOutput > 0n && !submitting;
+		: hasSigner && !!username && hasAmount && !sameAsset && recipientValid && !exceedsBalance && !!preview && preview.expectedOutput > 0n && !submitting;
 
 	const handleBtcDeposit = useCallback(async () => {
 		if (!canSubmit) return;
@@ -213,7 +225,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 
 	const handleSubmit = useCallback(async () => {
 		if (isBtcInput) { handleBtcDeposit(); return; }
-		if (!canSubmit || !username || !aioha) return;
+		if (!canSubmit || !username || !hasSigner) return;
 		setError(null); setTxId(null); setRcBlock(null); setSubmitting(true);
 		try {
 			const build = await magi.buildQuickSwap({
@@ -246,21 +258,34 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 				build.ops[swapOpIdx],
 				rc.broadcastRcLimit
 			);
-			const signed = await aioha.signAndBroadcastTx(tightenedOps, keyType);
-			if (!signed.success) {
-				const err = 'error' in signed ? signed.error : 'unknown';
-				throw new Error(`signAndBroadcastTx failed: ${err ?? 'unknown'}`);
+			let finalTxId: string;
+			if (onBroadcast) {
+				// Host-provided signer (Keychain, PeakD, custom). Takes precedence
+				// over `aioha` so integrators can drop in without writing an
+				// AiohaLike adapter.
+				const out = await onBroadcast(tightenedOps, keyType);
+				if (!out || typeof out.txId !== 'string') {
+					throw new Error('onBroadcast did not return a { txId } string');
+				}
+				finalTxId = out.txId;
+			} else {
+				const signed = await aioha!.signAndBroadcastTx(tightenedOps, keyType);
+				if (!signed.success) {
+					const err = 'error' in signed ? signed.error : 'unknown';
+					throw new Error(`signAndBroadcastTx failed: ${err ?? 'unknown'}`);
+				}
+				if (!('result' in signed) || typeof signed.result !== 'string') {
+					throw new Error('signAndBroadcastTx returned success but no tx id');
+				}
+				finalTxId = signed.result;
 			}
-			if (!('result' in signed) || typeof signed.result !== 'string') {
-				throw new Error('signAndBroadcastTx returned success but no tx id');
-			}
-			setTxId(signed.result);
-			onSuccess?.(signed.result);
+			setTxId(finalTxId);
+			onSuccess?.(finalTxId);
 		} catch (err) {
 			const e = err instanceof Error ? err : new Error(String(err));
 			setError(e.message); onError?.(e);
 		} finally { setSubmitting(false); }
-	}, [isBtcInput, handleBtcDeposit, canSubmit, aioha, magi, username, assetIn, amountInStr, assetOut, recipient, slippageBps, keyType, onSuccess, onError]);
+	}, [isBtcInput, handleBtcDeposit, canSubmit, hasSigner, aioha, onBroadcast, magi, username, assetIn, amountInStr, assetOut, recipient, slippageBps, keyType, onSuccess, onError]);
 
 	const copyToClipboard = useCallback((text: string) => { navigator.clipboard.writeText(text).catch(() => {}); }, []);
 
@@ -361,7 +386,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			: !hasAmount ? 'Enter amount'
 			: !preview || preview.expectedOutput === 0n ? 'No route available'
 			: 'Get deposit address'
-		: !aioha || !username ? 'Connect Hive wallet'
+		: !hasSigner || !username ? 'Connect Hive wallet'
 		: sameAsset ? 'Pick a different To asset'
 		: !hasAmount ? 'Enter amount'
 		: !recipientValid ? assetOut === 'BTC' ? 'Enter a valid BTC address' : 'Enter a valid Hive username'

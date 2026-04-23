@@ -23,7 +23,8 @@ const WebComponent = r2wc(MagiQuickSwap as unknown as (p: MagiQuickSwapProps) =>
 		prices: 'json',
 		keyType: 'json',
 		onSuccess: 'function',
-		onError: 'function'
+		onError: 'function',
+		onBroadcast: 'function'
 	}
 });
 
