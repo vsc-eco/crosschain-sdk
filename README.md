@@ -94,13 +94,36 @@ const { address } = await magi.getBtcDepositAddress({
 // Mapping bot watches the deposit and delivers HIVE/HBD to the recipient
 ```
 
+### 5. Direct signer (Peakd, Keychain-only apps, backends)
+
+For hosts that don't use Aioha, pass an `onBroadcast` callback instead. The widget still builds the ops, simulates, and tightens `rc_limit` — your callback only signs and broadcasts, using whatever pipeline the host already has (Keychain's `requestBroadcast`, `@hiveio/dhive`, etc.). `onBroadcast` takes precedence over `aioha` when both are set.
+
+```tsx
+import { MagiQuickSwap } from '@vsc.eco/crosschain-widget';
+import { Client, PrivateKey, type Operation } from '@hiveio/dhive';
+
+const client = new Client('https://api.hive.blog');
+const key = PrivateKey.fromString(activeWif); // load from env / secret store
+
+<MagiQuickSwap
+  username="alice"
+  onBroadcast={async (ops) => {
+    const result = await client.broadcast.sendOperations(ops as Operation[], key);
+    return { txId: result.id };
+  }}
+/>
+```
+
+For a Keychain-only app, swap the dhive body for `window.hive_keychain.requestBroadcast(...)` and resolve `{ txId }` from the callback. Never accept a user-typed private key into a browser widget — load keys in a trusted context only.
+
 ## Props
 
 ### `<MagiQuickSwap>` / `<magi-quickswap>`
 
 | Prop | Type | Required | Description |
 |---|---|---|---|
-| `aioha` | AiohaLike | For HIVE/HBD input | Aioha instance for signing. Not needed for BTC input. |
+| `aioha` | AiohaLike | For HIVE/HBD input | Aioha instance for signing. Not needed for BTC input or when `onBroadcast` is provided. |
+| `onBroadcast` | (ops, keyType) => Promise<{ txId }> | No | Bring-your-own signer. Takes precedence over `aioha`. Lets non-Aioha hosts (Peakd, Keychain, backends) plug into the widget — the widget still handles build + sim + `rc_limit` tightening. |
 | `username` | string | For HIVE/HBD input | Hive username. Widget auto-queries L1 balance when set. |
 | `keyType` | KeyTypes | For signing | Must be `KeyTypes.Active` (transfers require active key). |
 | `config` | MagiConfig | No | Defaults to `MAINNET_CONFIG`. |
