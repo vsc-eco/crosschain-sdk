@@ -29,7 +29,7 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.tsx src/webcomponent.tsx --format esm --dts --clean --external react --external react-dom --loader .css=copy --loader .svg=dataurl",
+    "build": "tsup src/index.tsx src/webcomponent.tsx --format esm --dts --clean --external react --external react-dom --loader .css=copy --loader .svg=dataurl && cp dist/styles-*.css dist/styles.css && mkdir -p dist/themes && cp src/themes/altera-dark.css dist/themes/altera-dark.css",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

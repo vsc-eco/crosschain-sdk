@@ -71,6 +71,14 @@ export function getHiveSwapOp(params: {
 	 * requires a price lookup which is not this function's job.
 	 */
 	referralQualifies?: boolean;
+	/**
+	 * Override the op's `rc_limit`. When omitted, falls back to a hardcoded
+	 * default (10000 for cross-chain, 2000 otherwise). Callers that run a
+	 * simulation first should pass `computeBroadcastRcLimit(simRcLimit, rcUsed)`
+	 * here so the broadcast rc_limit stays within the caller's available RC.
+	 * See vsc-explorer's Contract.tsx (rcLimitInt) for the reference flow.
+	 */
+	rcLimit?: number;
 }): CustomJsonOperation {
 	const {
 		username,
@@ -81,7 +89,8 @@ export function getHiveSwapOp(params: {
 		destinationChain,
 		destinationRecipient,
 		config,
-		referralQualifies
+		referralQualifies,
+		rcLimit
 	} = params;
 
 	const referral =
@@ -117,7 +126,7 @@ export function getHiveSwapOp(params: {
 		contract_id: config.dexRouterContractId,
 		action: 'execute',
 		payload: JSON.stringify(payload),
-		rc_limit: destinationChain ? 10000 : 2000,
+		rc_limit: rcLimit ?? (destinationChain ? 10000 : 2000),
 		intents: isNative
 			? [
 					{
@@ -140,6 +149,36 @@ export function getHiveSwapOp(params: {
 			json: JSON.stringify(op)
 		}
 	];
+}
+
+/**
+ * Return a copy of an existing `custom_json` swap op with the inner
+ * `rc_limit` replaced. Used to finalize the broadcast rc_limit after a
+ * simulation without re-running the full `buildQuickSwap` pipeline (preview
+ * lookups, referral quoting, etc.).
+ *
+ * Typed structurally so consumers don't need `@hiveio/dhive`; the return
+ * type is the same shape as `CustomJsonOperation` and is assignable back
+ * into the `build.ops` array.
+ */
+export function withSwapOpRcLimit(op: unknown, rcLimit: number): CustomJsonOperation {
+	if (!Array.isArray(op) || op[0] !== 'custom_json') {
+		throw new Error('withSwapOpRcLimit: expected a custom_json op');
+	}
+	const body = op[1] as { json?: unknown } & Record<string, unknown>;
+	if (!body || typeof body.json !== 'string') {
+		throw new Error('withSwapOpRcLimit: custom_json op missing `json` body');
+	}
+	const inner = JSON.parse(body.json) as Record<string, unknown>;
+	const nextInner = { ...inner, rc_limit: rcLimit };
+	const out: unknown = [
+		'custom_json',
+		{
+			...body,
+			json: JSON.stringify(nextInner)
+		}
+	];
+	return out as CustomJsonOperation;
 }
 
 /** Convenience: decide whether a referral fee applies for this swap shape. */

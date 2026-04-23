@@ -24,6 +24,28 @@ import { KeyTypes } from '@aioha/aioha';
 />
 ```
 
+## Direct signer (no Aioha)
+
+For hosts that don't use Aioha — Peakd, Keychain-only apps, backend / CLI integrations — pass an `onBroadcast` callback. It takes precedence over `aioha` and receives the build-+-simulate-tightened ops; your callback only has to sign and broadcast.
+
+```tsx
+import { MagiQuickSwap } from '@vsc.eco/crosschain-widget';
+import { Client, PrivateKey, type Operation } from '@hiveio/dhive';
+
+const client = new Client('https://api.hive.blog');
+const key = PrivateKey.fromString(activeWif); // load from env / secret store
+
+<MagiQuickSwap
+  username="alice"
+  onBroadcast={async (ops) => {
+    const result = await client.broadcast.sendOperations(ops as Operation[], key);
+    return { txId: result.id };
+  }}
+/>
+```
+
+Keychain integration looks the same with `window.hive_keychain.requestBroadcast(...)` inside the callback. Never accept a user-typed private key into a browser widget.
+
 ## Web component
 
 ```html

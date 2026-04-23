@@ -13,5 +13,12 @@
     "tsup": "^8.3.5",
     "vitest": "^2.1.8"
   },
+  "pnpm": {
+    "overrides": {
+      "@vsc.eco/crosschain-core": "workspace:*",
+      "@vsc.eco/crosschain-sdk": "workspace:*",
+      "@vsc.eco/crosschain-widget": "workspace:*"
+    }
+  },
   "packageManager": "pnpm@10.33.0"
 }

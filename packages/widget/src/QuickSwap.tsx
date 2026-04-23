@@ -11,7 +11,7 @@ import {
 	type PriceProvider,
 	type SwapAsset
 } from '@vsc.eco/crosschain-sdk';
-import { calculateSwap, calculateTwoHopSwap } from '@vsc.eco/crosschain-core';
+import { calculateSwap, calculateTwoHopSwap, withSwapOpRcLimit } from '@vsc.eco/crosschain-core';
 import { validate as validateBtcAddr, Network as BtcNetwork } from 'bitcoin-address-validation';
 import magiIcon from './assets/magi.svg';
 import { TokenSelect } from './TokenSelect.js';
@@ -37,14 +37,26 @@ export interface MagiQuickSwapProps {
 	onSuccess?: (txId: string) => void;
 	onError?: (err: Error) => void;
 	className?: string;
+	/**
+	 * Optional broadcast hook that takes precedence over `aioha`. Lets hosts
+	 * that don't use Aioha (Keychain-only apps, PeakD, custom signers) plug
+	 * their own signing flow in without writing an AiohaLike adapter. When
+	 * set, the widget calls `onBroadcast(ops, keyType)` with the already-
+	 * tightened ops and expects a resolved `txId` string. Rejecting the
+	 * promise (or throwing) surfaces as the widget's error state.
+	 */
+	onBroadcast?: (ops: unknown[], keyType: unknown) => Promise<{ txId: string }>;
 }
 
 export function MagiQuickSwap(props: MagiQuickSwapProps) {
 	const {
 		aioha, username, config = MAINNET_CONFIG, pools, prices,
 		keyType, defaultAssetIn = 'HBD', defaultAssetOut = 'BTC',
-		defaultSlippageBps = 100, availableBalance, onSuccess, onError, className
+		defaultSlippageBps = 100, availableBalance, onSuccess, onError, className,
+		onBroadcast
 	} = props;
+
+	const hasSigner = !!onBroadcast || !!aioha;
 
 	const poolProvider = useMemo(() => pools ?? undefined, [pools]);
 	const magi = useMemo<MagiClient>(() => {
@@ -76,6 +88,20 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 	const [btcDepositAddress, setBtcDepositAddress] = useState<string | null>(null);
 	const [btcDepositLoading, setBtcDepositLoading] = useState(false);
 	const [btcDepositError, setBtcDepositError] = useState<string | null>(null);
+
+	const [rcBlock, setRcBlock] = useState<{
+		/** 'insufficient-rc' — sim ran, rc_used > rcAvailable.
+		 *  'sim-failed' — sim itself returned success:false, typically because
+		 *  the user has no HBD on Magi at all. Both cases resolve by
+		 *  depositing HBD into Magi via Altera. */
+		reason: 'insufficient-rc' | 'sim-failed';
+		rcUsed: bigint;
+		rcAvailable: bigint;
+		/** Only set for the insufficient-rc case — for sim-failed we don't
+		 *  know how much RC is needed. */
+		hbdNeeded?: number;
+		errMsg?: string;
+	} | null>(null);
 
 	const [usdIn, setUsdIn] = useState<number | null>(null);
 	const [usdOut, setUsdOut] = useState<number | null>(null);
@@ -183,7 +209,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 
 	const canSubmit = isBtcInput
 		? hasAmount && !sameAsset && recipientValid && !!preview && preview.expectedOutput > 0n && !submitting
-		: !!aioha && !!username && hasAmount && !sameAsset && recipientValid && !exceedsBalance && !!preview && preview.expectedOutput > 0n && !submitting;
+		: hasSigner && !!username && hasAmount && !sameAsset && recipientValid && !exceedsBalance && !!preview && preview.expectedOutput > 0n && !submitting;
 
 	const handleBtcDeposit = useCallback(async () => {
 		if (!canSubmit) return;
@@ -199,18 +225,83 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 
 	const handleSubmit = useCallback(async () => {
 		if (isBtcInput) { handleBtcDeposit(); return; }
-		if (!canSubmit || !username) return;
-		setError(null); setTxId(null); setSubmitting(true);
+		if (!canSubmit || !username || !hasSigner) return;
+		setError(null); setTxId(null); setRcBlock(null); setSubmitting(true);
 		try {
-			const res = await magi.quickSwap({ username, assetIn: assetIn as 'HIVE' | 'HBD', amountIn: CoinAmount.fromDecimal(amountInStr, assetIn), assetOut, recipient: recipient.trim(), slippageBps }, keyType);
-			setTxId(res.txId); onSuccess?.(res.txId);
+			const build = await magi.buildQuickSwap({
+				username,
+				assetIn: assetIn as 'HIVE' | 'HBD',
+				amountIn: CoinAmount.fromDecimal(amountInStr, assetIn),
+				assetOut,
+				recipient: recipient.trim(),
+				slippageBps
+			});
+			const rc = await magi.checkSwapRc({ username, build });
+			if (!rc.simOk || !rc.sufficient) {
+				setRcBlock({
+					reason: rc.simOk ? 'insufficient-rc' : 'sim-failed',
+					rcUsed: rc.rcUsed,
+					rcAvailable: rc.rcAvailable,
+					hbdNeeded: rc.simOk ? Number(rc.rcShortfall) / 1000 : undefined,
+					errMsg: rc.simOk ? undefined : (rc.errMsg ?? rc.err ?? undefined)
+				});
+				return;
+			}
+			// Replace the swap op's baked-in rc_limit with the sim-derived one so
+			// the broadcast matches what the node just greenlit (see vsc-explorer's
+			// Contract.tsx:308 `rcLimitInt`). Without this, the broadcast still
+			// uses getHiveSwapOp's default (2000/10000) and can re-trigger the
+			// HBD-exclusion path that the aligned sim just sidestepped.
+			const swapOpIdx = build.ops.length - 1;
+			const tightenedOps = [...build.ops];
+			tightenedOps[swapOpIdx] = withSwapOpRcLimit(
+				build.ops[swapOpIdx],
+				rc.broadcastRcLimit
+			);
+			let finalTxId: string;
+			if (onBroadcast) {
+				// Host-provided signer (Keychain, PeakD, custom). Takes precedence
+				// over `aioha` so integrators can drop in without writing an
+				// AiohaLike adapter.
+				const out = await onBroadcast(tightenedOps, keyType);
+				if (!out || typeof out.txId !== 'string') {
+					throw new Error('onBroadcast did not return a { txId } string');
+				}
+				finalTxId = out.txId;
+			} else {
+				const signed = await aioha!.signAndBroadcastTx(tightenedOps, keyType);
+				if (!signed.success) {
+					const err = 'error' in signed ? signed.error : 'unknown';
+					throw new Error(`signAndBroadcastTx failed: ${err ?? 'unknown'}`);
+				}
+				if (!('result' in signed) || typeof signed.result !== 'string') {
+					throw new Error('signAndBroadcastTx returned success but no tx id');
+				}
+				finalTxId = signed.result;
+			}
+			setTxId(finalTxId);
+			onSuccess?.(finalTxId);
 		} catch (err) {
 			const e = err instanceof Error ? err : new Error(String(err));
 			setError(e.message); onError?.(e);
 		} finally { setSubmitting(false); }
-	}, [isBtcInput, handleBtcDeposit, canSubmit, magi, username, assetIn, amountInStr, assetOut, recipient, slippageBps, keyType, onSuccess, onError]);
+	}, [isBtcInput, handleBtcDeposit, canSubmit, hasSigner, aioha, onBroadcast, magi, username, assetIn, amountInStr, assetOut, recipient, slippageBps, keyType, onSuccess, onError]);
 
 	const copyToClipboard = useCallback((text: string) => { navigator.clipboard.writeText(text).catch(() => {}); }, []);
+
+	const handleFlip = useCallback(() => {
+		const nextAmountIn = preview && preview.expectedOutput > 0n
+			? new CoinAmount(preview.expectedOutput, assetOut).toDecimalString()
+			: '';
+		const wasBtcOut = assetOut === 'BTC';
+		const willBeBtcOut = assetIn === 'BTC';
+		setAssetIn(assetOut);
+		setAssetOut(assetIn);
+		setAmountInStr(nextAmountIn);
+		setBtcDepositAddress(null);
+		setBtcDepositError(null);
+		if (wasBtcOut !== willBeBtcOut) setRecipient('');
+	}, [assetIn, assetOut, preview]);
 
 	// USD values
 	const inputUsd = useMemo(() => {
@@ -237,9 +328,24 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 		return `1 ${assetIn} ≈ ${rate.toFixed(assetOut === 'BTC' ? 8 : 6)} ${assetOut}`;
 	}, [preview, inputAmount, assetIn, assetOut]);
 
+	// Referral skim (denominated in assetOut), merged into the displayed Fee
+	// so users see the full cost. Mirrors referralQualifies() gates:
+	// referral must be configured, this must be the hive-signed path (not a
+	// BTC deposit), assetOut must not be HIVE/HBD, and input must clear the
+	// usdThreshold (defaults to 0). Ref skim = expectedOutput * bps / 10000.
+	const referralFeeRaw = useMemo(() => {
+		if (!config.referral || isBtcInput) return 0n;
+		if (assetOut === 'HIVE' || assetOut === 'HBD') return 0n;
+		if (!preview || preview.expectedOutput === 0n) return 0n;
+		const threshold = config.referral.usdThreshold ?? 0;
+		if (inputUsd == null || !Number.isFinite(inputUsd) || inputUsd < threshold) return 0n;
+		return (preview.expectedOutput * BigInt(config.referral.bps)) / 10000n;
+	}, [config.referral, isBtcInput, assetOut, preview, inputUsd]);
+
 	const feeLabel = useMemo(() => {
 		if (!preview) return '0.08% + CLP';
-		const hop2Amt = new CoinAmount(preview.totalFee, assetOut);
+		const hop2TotalRaw = preview.totalFee + referralFeeRaw;
+		const hop2Amt = new CoinAmount(hop2TotalRaw, assetOut);
 		const main = `${hop2Amt.toDecimalString()} ${assetOut}`;
 		const hop2Usd = usdOut != null ? Number(hop2Amt.toDecimalString()) * usdOut : null;
 		if (!preview.hop1Fee) {
@@ -257,7 +363,15 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			return `${combined} ${formatUsd(hop2Usd + hop1UsdVal)}`;
 		}
 		return combined;
-	}, [preview, assetOut, usdOut, usdHop1]);
+	}, [preview, assetOut, usdOut, usdHop1, referralFeeRaw]);
+
+	const minReceivedLabel = useMemo(() => {
+		if (!preview || preview.minAmountOut === 0n) return '—';
+		const amt = new CoinAmount(preview.minAmountOut, assetOut);
+		const main = `${amt.toDecimalString()} ${assetOut}`;
+		const usd = usdOut != null ? Number(amt.toDecimalString()) * usdOut : null;
+		return usd != null ? `${main} ${formatUsd(usd)}` : main;
+	}, [preview, assetOut, usdOut]);
 
 	const routeLabel = useMemo(() => {
 		if (assetIn === 'HBD' || assetOut === 'HBD') return `${assetIn} → ${assetOut}`;
@@ -272,7 +386,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			: !hasAmount ? 'Enter amount'
 			: !preview || preview.expectedOutput === 0n ? 'No route available'
 			: 'Get deposit address'
-		: !aioha || !username ? 'Connect Hive wallet'
+		: !hasSigner || !username ? 'Connect Hive wallet'
 		: sameAsset ? 'Pick a different To asset'
 		: !hasAmount ? 'Enter amount'
 		: !recipientValid ? assetOut === 'BTC' ? 'Enter a valid BTC address' : 'Enter a valid Hive username'
@@ -319,10 +433,10 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 				)}
 			</div>
 
-			<div className="magi-qs-arrow-wrap" aria-hidden="true">
-				<div className="magi-qs-arrow-icon">
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
-				</div>
+			<div className="magi-qs-arrow-wrap">
+				<button type="button" className="magi-qs-flip-btn" onClick={handleFlip} disabled={submitting} aria-label="Flip From and To">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="3" x2="7" y2="21" /><polyline points="3 7 7 3 11 7" /><line x1="17" y1="3" x2="17" y2="21" /><polyline points="21 17 17 21 13 17" /></svg>
+				</button>
 			</div>
 
 			{/* To */}
@@ -381,6 +495,7 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			<div className="magi-qs-details">
 				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Rate</span><span className="magi-qs-detail-value">{rateLabel}</span></div>
 				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Fee</span><span className="magi-qs-detail-value">{feeLabel}</span></div>
+				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Min received</span><span className="magi-qs-detail-value">{minReceivedLabel}</span></div>
 				<div className="magi-qs-detail-row"><span className="magi-qs-detail-label">Route</span><span className="magi-qs-detail-value route">{routeLabel}</span></div>
 			</div>
 
@@ -389,6 +504,41 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 			{previewError && <p className="magi-qs-status error">{previewError}</p>}
 			{error && <p className="magi-qs-status error">{error}</p>}
 			{btcDepositError && <p className="magi-qs-status error">{btcDepositError}</p>}
+
+			{rcBlock && (
+				<div className="magi-qs-rc-modal" role="dialog" aria-modal="true" aria-labelledby="magi-qs-rc-title">
+					<div className="magi-qs-rc-modal-card">
+						<h3 id="magi-qs-rc-title" className="magi-qs-rc-title">Deposit HBD into Magi</h3>
+						{rcBlock.reason === 'insufficient-rc' ? (
+							<p className="magi-qs-rc-body">
+								This swap needs <strong>{(Number(rcBlock.rcUsed) / 1000).toFixed(3)} HBD</strong> of RC in your
+								Magi account. You currently have <strong>{(Number(rcBlock.rcAvailable) / 1000).toFixed(3)} HBD</strong>.
+								Deposit at least <strong>{(rcBlock.hbdNeeded ?? 0).toFixed(3)} HBD</strong> into Magi, then try again.
+							</p>
+						) : (
+							<p className="magi-qs-rc-body">
+								We couldn't simulate the swap — usually this means your Magi account doesn't hold enough HBD
+								to cover it. Deposit HBD into Magi, then try again.
+								{rcBlock.errMsg ? <> <span className="magi-qs-rc-err">({rcBlock.errMsg})</span></> : null}
+							</p>
+						)}
+						<p className="magi-qs-rc-body">
+							The easiest way to move HBD into Magi is through <strong>Altera</strong>.
+						</p>
+						<a
+							className="magi-qs-submit"
+							href="https://altera.magi.eco"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Open Altera
+						</a>
+						<button type="button" className="magi-qs-rc-dismiss" onClick={() => setRcBlock(null)}>
+							Dismiss
+						</button>
+					</div>
+				</div>
+			)}
 
 			{!btcDepositAddress && (
 				<button type="button" className="magi-qs-submit" onClick={handleSubmit} disabled={!canSubmit || btcDepositLoading}>{submitLabel}</button>
