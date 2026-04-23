@@ -1,4 +1,4 @@
-import { MAINNET_CONFIG, TESTNET_CONFIG, type MagiConfig, type SwapAsset } from '@vsc.eco/crosschain-core';
+import { MAINNET_CONFIG, TESTNET_CONFIG, withSwapOpRcLimit, type MagiConfig, type SwapAsset } from '@vsc.eco/crosschain-core';
 import { buildQuickSwap, type QuickSwapInput, type QuickSwapBuildResult } from './quickSwap.js';
 import { createDefaultPoolProvider, type PoolProvider } from './poolProvider.js';
 import type { PriceProvider } from './priceProvider.js';
@@ -6,6 +6,8 @@ import { requestBtcDepositAddress, type BtcDepositRequest, type BtcDepositResult
 import { createHiveBalanceProvider, type BalanceProvider } from './balanceProvider.js';
 import {
 	checkSwapRc,
+	computeBroadcastRcLimit,
+	computeSimRcLimit,
 	getAccountRc,
 	simCallFromSwapOp,
 	simulateSwapCall,
@@ -28,6 +30,8 @@ export type { QuickSwapInput, QuickSwapBuildResult } from './quickSwap.js';
 export type { BtcDepositRequest, BtcDepositResult } from './mappingBot.js';
 export {
 	checkSwapRc,
+	computeBroadcastRcLimit,
+	computeSimRcLimit,
 	getAccountRc,
 	simCallFromSwapOp,
 	simulateSwapCall
@@ -64,7 +68,12 @@ export interface MagiClient {
 }
 
 export interface QuickSwapResult {
+	/** The build returned by `buildQuickSwap`, with the swap op's `rc_limit`
+	 *  replaced by the sim-derived `broadcastRcLimit` before broadcast. */
 	build: QuickSwapBuildResult;
+	/** RC check that gated the broadcast. `simRcLimit` and `broadcastRcLimit`
+	 *  are the values actually used. */
+	rcCheck: RcCheckResult;
 	txId: string;
 }
 
@@ -91,7 +100,21 @@ export function createMagi(opts: CreateMagiOptions = {}): MagiClient {
 				);
 			}
 			const build = await buildQuickSwap(input, { config, pools, prices });
-			const res = await aioha.signAndBroadcastTx(build.ops, keyType);
+			const swapOpIndex = build.ops.length - 1;
+			const call = simCallFromSwapOp(build.ops[swapOpIndex]);
+			const rcCheck = await checkSwapRc(config, { username: input.username, call });
+			if (!rcCheck.simOk) {
+				throw new Error(
+					`quickSwap simulation failed: ${rcCheck.errMsg ?? rcCheck.err ?? 'unknown'}`
+				);
+			}
+			const tightenedOps = [...build.ops];
+			tightenedOps[swapOpIndex] = withSwapOpRcLimit(
+				build.ops[swapOpIndex],
+				rcCheck.broadcastRcLimit
+			);
+			const finalBuild: QuickSwapBuildResult = { ...build, ops: tightenedOps };
+			const res = await aioha.signAndBroadcastTx(tightenedOps, keyType);
 			if (!res.success) {
 				const err = 'error' in res ? res.error : 'unknown';
 				throw new Error(`signAndBroadcastTx failed: ${err ?? 'unknown'}`);
@@ -99,7 +122,7 @@ export function createMagi(opts: CreateMagiOptions = {}): MagiClient {
 			if (!('result' in res) || typeof res.result !== 'string') {
 				throw new Error('signAndBroadcastTx returned success but no tx id');
 			}
-			return { build, txId: res.result };
+			return { build: finalBuild, rcCheck, txId: res.result };
 		},
 		async getBtcDepositAddress(req) {
 			return requestBtcDepositAddress(req, config);
@@ -112,7 +135,9 @@ export function createMagi(opts: CreateMagiOptions = {}): MagiClient {
 		},
 		async simulateSwap({ username, build }) {
 			const call = simCallFromSwapOp(build.ops[build.ops.length - 1]);
-			return simulateSwapCall(config, { username, call });
+			const rc = await getAccountRc(config, `hive:${username}`);
+			const rcLimit = computeSimRcLimit(rc.amount, call);
+			return simulateSwapCall(config, { username, call, rcLimit });
 		},
 		async checkSwapRc({ username, build }) {
 			const call = simCallFromSwapOp(build.ops[build.ops.length - 1]);

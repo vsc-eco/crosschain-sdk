@@ -10,6 +10,11 @@ export interface AccountRc {
 export interface SimulateResult {
 	success: boolean;
 	rcUsed: bigint;
+	/** The `rc_limit` value actually used in the simulation. Matches what the
+	 *  caller passed as `rcLimit`, or — when computed via the aligned path —
+	 *  `accountRc.amount - hbdIntentReserve`. Useful to forward into
+	 *  `computeBroadcastRcLimit` when building the real broadcast op. */
+	simRcLimit: number;
 	err?: string;
 	errMsg?: string;
 }
@@ -22,6 +27,17 @@ export interface RcCheckResult {
 	/** `max(0, rcUsed - rcAvailable)`. RC units are 1 HBD = 1000 RC,
 	 *  so divide by 1000 for user-facing HBD display. */
 	rcShortfall: bigint;
+	/** Aligned `rc_limit` passed to the simulation (= vsc-explorer's
+	 *  `balance.rc.amount - ceil(intents.hbd * 1000)`). Low enough to keep the
+	 *  node's HBD-exclusion-against-RC at or below the caller's actual HBD so
+	 *  the sim's intent pull isn't spuriously rejected as "insufficient
+	 *  balance". Forward this into `computeBroadcastRcLimit` to size the real
+	 *  broadcast. */
+	simRcLimit: number;
+	/** Recommended `rc_limit` for the real broadcast, clamped to the caller's
+	 *  available RC: `min(ceil(rcUsed * 1.25), simRcLimit)`. Mirrors
+	 *  vsc-explorer's `rcLimitInt` formula. */
+	broadcastRcLimit: number;
 	err?: string;
 	errMsg?: string;
 }
@@ -114,18 +130,82 @@ export async function getAccountRc(
 }
 
 /**
+ * Sum HBD-denominated `transfer.allow` intent limits, in milli-HBD units. The
+ * VSC runtime only applies RC-exclusion-against-balance to HBD pulls (see
+ * execution-context.go `PullBalance`) so only HBD intents reduce the usable
+ * rc_limit.
+ */
+function hbdIntentReserve(call: SwapCallSpec): bigint {
+	let reserve = 0n;
+	for (const intent of call.intents) {
+		if (intent.type !== 'transfer.allow') continue;
+		if ((intent.args.token ?? '').toLowerCase() !== 'hbd') continue;
+		const limit = intent.args.limit;
+		if (!limit) continue;
+		const [whole = '0', frac = ''] = limit.split('.');
+		const padded = (frac + '000').slice(0, 3);
+		reserve += BigInt(whole || '0') * 1000n + BigInt(padded || '0');
+	}
+	return reserve;
+}
+
+/**
+ * Compute the simulation `rc_limit` the way vsc-explorer's call form does:
+ * `accountRc.amount - ceil(sum of HBD intent limits in milli-HBD)`. See
+ * Contract.tsx:269 (`simRcLimit`) for the reference. Clamped to the node's
+ * accepted range [1, 100000] (schema.resolvers.go:607).
+ *
+ * Why this exact formula: the runtime reserves `rc_limit - rcFreeRemaining`
+ * HBD against RC consumption before the intent pull runs
+ * (execution-context.go:422-430). Setting rc_limit = accountRc.amount -
+ * hbdIntents makes the exclusion exactly equal to `HBD balance - hbdIntents`,
+ * which leaves just enough HBD free to cover the intent pull.
+ */
+export function computeSimRcLimit(accountRcAmount: bigint, call: SwapCallSpec): number {
+	const limit = accountRcAmount - hbdIntentReserve(call);
+	if (limit < 1n) return 1;
+	if (limit > 100_000n) return 100_000;
+	return Number(limit);
+}
+
+/**
+ * Choose the real broadcast's `rc_limit` from a successful sim, matching
+ * vsc-explorer's `rcLimitInt` formula (Contract.tsx:308):
+ * `min(ceil(rcUsed * 1.25), simRcLimit)`. The 25% headroom guards against
+ * minor state drift between sim and broadcast; the clamp prevents re-triggering
+ * the HBD-exclusion path that the aligned sim just sidestepped.
+ */
+export function computeBroadcastRcLimit(simRcLimit: number, rcUsed: bigint): number {
+	const padded = Math.ceil(Number(rcUsed) * 1.25);
+	const floored = padded < 1 ? 1 : padded;
+	return Math.min(floored, simRcLimit);
+}
+
+/**
  * Run `simulateContractCalls` for a single contract call. The VSC node
  * executes the call in a read-only sandbox and returns `rc_used` regardless
  * of whether the call would have succeeded, so callers should inspect both
  * `success` and `rcUsed` — a failed sim still tells you how much RC the
  * node burned getting to the failure.
+ *
+ * Pass `rcLimit` to override `call.rc_limit` for this simulation. Callers
+ * that haven't pre-fetched RC should use `checkSwapRc` instead — it handles
+ * the RC fetch + alignment automatically.
  */
 export async function simulateSwapCall(
 	config: MagiConfig,
-	params: { username: string; call: SwapCallSpec; txId?: string }
+	params: {
+		username: string;
+		call: SwapCallSpec;
+		txId?: string;
+		/** Override `call.rc_limit` for this sim. Typically set to
+		 *  `computeSimRcLimit(accountRc.amount, call)` to match vsc-explorer. */
+		rcLimit?: number;
+	}
 ): Promise<SimulateResult> {
 	const txId =
 		params.txId ?? `sim-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+	const simRcLimit = params.rcLimit ?? params.call.rc_limit;
 	const data = await gqlPost<{
 		simulateContractCalls: Array<{
 			success: boolean;
@@ -141,7 +221,7 @@ export async function simulateSwapCall(
 				tx_id: txId,
 				required_auths: [`hive:${params.username}`],
 				required_posting_auths: [],
-				calls: [params.call]
+				calls: [{ ...params.call, rc_limit: simRcLimit }]
 			}
 		}
 	});
@@ -150,6 +230,7 @@ export async function simulateSwapCall(
 	return {
 		success: first.success,
 		rcUsed: BigInt(first.rc_used),
+		simRcLimit,
 		err: first.err ?? undefined,
 		errMsg: first.err_msg ?? undefined
 	};
@@ -181,17 +262,22 @@ export function simCallFromSwapOp(op: unknown): SwapCallSpec {
 }
 
 /**
- * Simulate the swap + read the user's current RC + report whether the
- * sim's cost is covered. Both calls run in parallel against the same node.
+ * Fetch the caller's RC, then simulate with a vsc-explorer-aligned `rc_limit`
+ * (`accountRc.amount - hbdIntentReserve`) so the node doesn't over-reserve
+ * HBD against RC and reject the intent pull as "insufficient balance". Also
+ * returns the `broadcastRcLimit` the caller should pass into
+ * `getHiveSwapOp({ rcLimit })` when rebuilding the op for broadcast.
+ *
+ * Sequential, not parallel: the RC fetch must complete before the sim so
+ * `rc_limit` can be derived from it.
  */
 export async function checkSwapRc(
 	config: MagiConfig,
 	params: { username: string; call: SwapCallSpec; txId?: string }
 ): Promise<RcCheckResult> {
-	const [sim, rc] = await Promise.all([
-		simulateSwapCall(config, params),
-		getAccountRc(config, `hive:${params.username}`)
-	]);
+	const rc = await getAccountRc(config, `hive:${params.username}`);
+	const simRcLimit = computeSimRcLimit(rc.amount, params.call);
+	const sim = await simulateSwapCall(config, { ...params, rcLimit: simRcLimit });
 	const shortfall = sim.rcUsed > rc.amount ? sim.rcUsed - rc.amount : 0n;
 	return {
 		simOk: sim.success,
@@ -199,6 +285,8 @@ export async function checkSwapRc(
 		rcAvailable: rc.amount,
 		sufficient: sim.success && shortfall === 0n,
 		rcShortfall: shortfall,
+		simRcLimit,
+		broadcastRcLimit: computeBroadcastRcLimit(simRcLimit, sim.rcUsed),
 		err: sim.err,
 		errMsg: sim.errMsg
 	};

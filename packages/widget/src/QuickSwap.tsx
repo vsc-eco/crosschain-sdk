@@ -11,7 +11,7 @@ import {
 	type PriceProvider,
 	type SwapAsset
 } from '@vsc.eco/crosschain-sdk';
-import { calculateSwap, calculateTwoHopSwap } from '@vsc.eco/crosschain-core';
+import { calculateSwap, calculateTwoHopSwap, withSwapOpRcLimit } from '@vsc.eco/crosschain-core';
 import { validate as validateBtcAddr, Network as BtcNetwork } from 'bitcoin-address-validation';
 import magiIcon from './assets/magi.svg';
 import { TokenSelect } from './TokenSelect.js';
@@ -235,7 +235,18 @@ export function MagiQuickSwap(props: MagiQuickSwapProps) {
 				});
 				return;
 			}
-			const signed = await aioha.signAndBroadcastTx(build.ops, keyType);
+			// Replace the swap op's baked-in rc_limit with the sim-derived one so
+			// the broadcast matches what the node just greenlit (see vsc-explorer's
+			// Contract.tsx:308 `rcLimitInt`). Without this, the broadcast still
+			// uses getHiveSwapOp's default (2000/10000) and can re-trigger the
+			// HBD-exclusion path that the aligned sim just sidestepped.
+			const swapOpIdx = build.ops.length - 1;
+			const tightenedOps = [...build.ops];
+			tightenedOps[swapOpIdx] = withSwapOpRcLimit(
+				build.ops[swapOpIdx],
+				rc.broadcastRcLimit
+			);
+			const signed = await aioha.signAndBroadcastTx(tightenedOps, keyType);
 			if (!signed.success) {
 				const err = 'error' in signed ? signed.error : 'unknown';
 				throw new Error(`signAndBroadcastTx failed: ${err ?? 'unknown'}`);
