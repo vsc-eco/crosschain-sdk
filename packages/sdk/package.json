@@ -1,9 +1,10 @@
 {
 	"name": "@vsc.eco/crosschain-sdk",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"publishConfig": {
 		"access": "public"
 	},
+	"license": "MIT",
 	"description": "High-level Magi (VSC) L2 client — quickSwap, pool queries, signer integration via Aioha",
 	"keywords": [
 		"hive",
@@ -48,7 +49,7 @@
 		}
 	},
 	"dependencies": {
-		"@vsc.eco/crosschain-core": "0.0.2"
+		"@vsc.eco/crosschain-core": "workspace:*"
 	},
 	"devDependencies": {
 		"@aioha/aioha": "^1.8.2",

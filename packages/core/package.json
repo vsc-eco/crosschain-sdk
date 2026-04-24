@@ -1,9 +1,10 @@
 {
 	"name": "@vsc.eco/crosschain-core",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"publishConfig": {
 		"access": "public"
 	},
+	"license": "MIT",
 	"description": "Magi (VSC) L2 operation builders + swap math — pure functions, no framework dependencies",
 	"keywords": [
 		"hive",

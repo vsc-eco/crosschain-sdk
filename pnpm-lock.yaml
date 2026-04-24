@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@vsc.eco/crosschain-core': workspace:*
-  '@vsc.eco/crosschain-sdk': workspace:*
-  '@vsc.eco/crosschain-widget': workspace:*
-
 importers:
 
   .:
