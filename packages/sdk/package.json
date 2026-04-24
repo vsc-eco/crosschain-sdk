@@ -1,47 +1,60 @@
 {
-  "name": "@vsc.eco/crosschain-sdk",
-  "version": "0.0.1",
-  "publishConfig": {
-    "access": "public"
-  },
-  "description": "High-level Magi (VSC) L2 client — quickSwap, pool queries, signer integration via Aioha",
-  "keywords": ["hive", "hbd", "bitcoin", "vsc", "dex", "swap", "cross-chain", "aioha"],
-  "homepage": "https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/sdk#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vsc-eco/crosschain-sdk.git",
-    "directory": "packages/sdk"
-  },
-  "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": ["dist"],
-  "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "@aioha/aioha": "^1.8.0"
-  },
-  "peerDependenciesMeta": {
-    "@aioha/aioha": { "optional": true }
-  },
-  "dependencies": {
-    "@vsc.eco/crosschain-core": "0.0.1"
-  },
-  "devDependencies": {
-    "@aioha/aioha": "^1.8.2",
-    "@hiveio/dhive": "^1.3.2",
-    "typescript": "^5.7.3",
-    "tsup": "^8.3.5",
-    "vitest": "^2.1.8"
-  }
+	"name": "@vsc.eco/crosschain-sdk",
+	"version": "0.0.2",
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "High-level Magi (VSC) L2 client — quickSwap, pool queries, signer integration via Aioha",
+	"keywords": [
+		"hive",
+		"hbd",
+		"bitcoin",
+		"vsc",
+		"dex",
+		"swap",
+		"cross-chain",
+		"aioha"
+	],
+	"homepage": "https://github.com/vsc-eco/crosschain-sdk/tree/main/packages/sdk#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/vsc-eco/crosschain-sdk.git",
+		"directory": "packages/sdk"
+	},
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --dts --clean",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
+	},
+	"peerDependencies": {
+		"@aioha/aioha": "^1.8.0"
+	},
+	"peerDependenciesMeta": {
+		"@aioha/aioha": {
+			"optional": true
+		}
+	},
+	"dependencies": {
+		"@vsc.eco/crosschain-core": "0.0.2"
+	},
+	"devDependencies": {
+		"@aioha/aioha": "^1.8.2",
+		"@hiveio/dhive": "^1.3.2",
+		"typescript": "^5.7.3",
+		"tsup": "^8.3.5",
+		"vitest": "^2.1.8"
+	}
 }

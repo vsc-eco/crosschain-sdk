@@ -1,8 +1,18 @@
-import { MAINNET_CONFIG, TESTNET_CONFIG, withSwapOpRcLimit, type MagiConfig, type SwapAsset } from '@vsc.eco/crosschain-core';
+import {
+	MAINNET_CONFIG,
+	TESTNET_CONFIG,
+	withSwapOpRcLimit,
+	type MagiConfig,
+	type SwapAsset
+} from '@vsc.eco/crosschain-core';
 import { buildQuickSwap, type QuickSwapInput, type QuickSwapBuildResult } from './quickSwap.js';
 import { createDefaultPoolProvider, type PoolProvider } from './poolProvider.js';
 import type { PriceProvider } from './priceProvider.js';
-import { requestBtcDepositAddress, type BtcDepositRequest, type BtcDepositResult } from './mappingBot.js';
+import {
+	requestBtcDepositAddress,
+	type BtcDepositRequest,
+	type BtcDepositResult
+} from './mappingBot.js';
 import { createHiveBalanceProvider, type BalanceProvider } from './balanceProvider.js';
 import {
 	checkSwapRc,
@@ -18,7 +28,12 @@ import {
 } from './rc.js';
 
 export { MAINNET_CONFIG, TESTNET_CONFIG } from '@vsc.eco/crosschain-core';
-export type { MagiConfig, SwapAsset, ReferralConfig, SwapCalcResult } from '@vsc.eco/crosschain-core';
+export type {
+	MagiConfig,
+	SwapAsset,
+	ReferralConfig,
+	SwapCalcResult
+} from '@vsc.eco/crosschain-core';
 export { CoinAmount } from '@vsc.eco/crosschain-core';
 export { createDefaultPoolProvider } from './poolProvider.js';
 export { createPoolPriceProvider } from './priceProvider.js';
@@ -42,7 +57,9 @@ export interface AiohaLike {
 	signAndBroadcastTx(
 		operations: unknown[],
 		keyType: unknown
-	): Promise<{ success: boolean; result?: string; error?: string } | { success: true; result: string }>;
+	): Promise<
+		{ success: boolean; result?: string; error?: string } | { success: true; result: string }
+	>;
 }
 
 export interface CreateMagiOptions {
@@ -63,8 +80,14 @@ export interface MagiClient {
 	getBtcDepositAddress: (req: BtcDepositRequest) => Promise<BtcDepositResult>;
 	getBalance: (username: string, asset: SwapAsset) => Promise<bigint | null>;
 	getAccountRc: (account: string) => Promise<AccountRc>;
-	simulateSwap: (params: { username: string; build: QuickSwapBuildResult }) => Promise<SimulateResult>;
-	checkSwapRc: (params: { username: string; build: QuickSwapBuildResult }) => Promise<RcCheckResult>;
+	simulateSwap: (params: {
+		username: string;
+		build: QuickSwapBuildResult;
+	}) => Promise<SimulateResult>;
+	checkSwapRc: (params: {
+		username: string;
+		build: QuickSwapBuildResult;
+	}) => Promise<RcCheckResult>;
 }
 
 export interface QuickSwapResult {
@@ -79,8 +102,7 @@ export interface QuickSwapResult {
 
 export function createMagi(opts: CreateMagiOptions = {}): MagiClient {
 	const config = opts.config ?? MAINNET_CONFIG;
-	const pools =
-		opts.pools ?? createDefaultPoolProvider(undefined, config.indexerUrl);
+	const pools = opts.pools ?? createDefaultPoolProvider(undefined, config.indexerUrl);
 	const prices = opts.prices;
 	const balances = opts.balances ?? createHiveBalanceProvider();
 	const aioha = opts.aioha;

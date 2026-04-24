@@ -9,8 +9,8 @@
     "demo": "pnpm --filter demo run dev"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
     "tsup": "^8.3.5",
+    "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   },
   "pnpm": {
@@ -20,5 +20,5 @@
       "@vsc.eco/crosschain-widget": "workspace:*"
     }
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.2"
 }
